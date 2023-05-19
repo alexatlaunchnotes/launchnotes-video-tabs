@@ -1,7 +1,7 @@
 {
   "version": 3,
   "sources": ["../src/index.ts"],
-  "sourcesContent": ["const init = () => {\n    console.log('loaded')\n}\n\ndocument.addEventListener(\"DOMContentLoaded\", init)"],
-  "mappings": "MAAA,IAAMA,EAAO,IAAM,CACf,QAAQ,IAAI,QAAQ,CACxB,EAEA,SAAS,iBAAiB,mBAAoBA,CAAI",
-  "names": ["init"]
+  "sourcesContent": ["const init = () => {\n    console.log('loaded')\n\n    // Select the node that will be observed for mutations\nconst tabsComponent = document.querySelector(\"[wb-data='tabs']\");\nif (!tabsComponent) return\n\n// Options for the observer (which mutations to observe)\nconst config: MutationObserverInit = { attributes: true, subtree: true, attributeFilter: ['class'] };\n\n// Callback function to execute when mutations are observed\nconst callback = (mutationList, observer) => {\n  for (const mutation of mutationList) {\n    if (mutation.type === \"attributes\") {\n        console.log(mutation)\n    }\n  }\n};\n\n// Create an observer instance linked to the callback function\nconst observer = new MutationObserver(callback);\n\n// Start observing the target node for configured mutations\nobserver.observe(tabsComponent, config);\n\n// Later, you can stop observing\nobserver.disconnect();\n\n}\n\ndocument.addEventListener(\"DOMContentLoaded\", init)"],
+  "mappings": "MAAA,IAAMA,EAAO,IAAM,CACf,QAAQ,IAAI,QAAQ,EAGxB,IAAMC,EAAgB,SAAS,cAAc,kBAAkB,EAC/D,GAAI,CAACA,EAAe,OAGpB,IAAMC,EAA+B,CAAE,WAAY,GAAM,QAAS,GAAM,gBAAiB,CAAC,OAAO,CAAE,EAG7FC,EAAW,CAACC,EAAcC,IAAa,CAC3C,QAAWC,KAAYF,EACjBE,EAAS,OAAS,cAClB,QAAQ,IAAIA,CAAQ,CAG5B,EAGMD,EAAW,IAAI,iBAAiBF,CAAQ,EAG9CE,EAAS,QAAQJ,EAAeC,CAAM,EAGtCG,EAAS,WAAW,CAEpB,EAEA,SAAS,iBAAiB,mBAAoBL,CAAI",
+  "names": ["init", "tabsComponent", "config", "callback", "mutationList", "observer", "mutation"]
 }
