@@ -85,9 +85,8 @@ window.Webflow.push(() => {
         tabs.forEach((tab: HTMLAnchorElement ) => {
             const bodyText: HTMLDivElement | null = tab.querySelector(selectors.TAB_BODY);
             if (!bodyText) return
-            console.log(currentIndex, tab)
+            
             if (!tab.classList.contains(selectors.CURRENT_CLASS)) {
-                console.log(bodyText)
                 bodyText.style.display = 'none';
             } else {
                 bodyText.style.display = 'block'
