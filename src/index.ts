@@ -1,99 +1,139 @@
 import gsap from "gsap";
 
-const init = () => {
-  const ACTIVE_TAB = "w--current";
-  let activeIndex = 0;
-  let timeout;
-  let tween;
+interface Window {
+  Webflow: any;
+  _wq: any;
+}
 
-  // Select the node that will be observed for mutations
-  const tabsComponent = document.querySelector('[wb-data="tabs"]');
-  if (!tabsComponent) return;
+type ProgressDirection = "horizontal" | "vertical";
 
-  const tabsMenu = tabsComponent.querySelector('[wb-data="menu"]');
-  if (!tabsMenu) return;
+enum selectors {
+  COMPONENT = '[wb-autotabs="component"]',
+  PANE = ".w-tab-pane",
+  LINK = ".w-tab-link",
+  CURRENT_CLASS = "w--current",
+  PROGRESS_BAR = '[wb-autotabs="progress"]',
+  PROGRESS_DIRECTION = "wb-autotabs-progress-direction",
+}
 
-  const tabsContent = tabsComponent.querySelector('[wb-data="content"]');
-  if (!tabsContent) return;
+window.Webflow ||= [];
 
-  const videos = tabsContent.querySelectorAll(".wistia_embed");
-  if (!videos) return;
+window.Webflow.push(() => {
+  const components = document.querySelectorAll<HTMLDivElement>(selectors.COMPONENT);
 
-  const progressBars = tabsMenu.querySelectorAll(".tab-progress-bar");
+  if (components.length === 0) {
+    console.error("No autotabs components found!");
+  }
 
-  // animate progressBars
-  const animateProgressBars = (duration: number) => {
-    tween = gsap.fromTo(
-      progressBars[activeIndex],
-      {
-        width: "0%",
-      },
-      {
-        width: "100%",
-        duration: duration,
-        ease: "none",
-      }
-    );
-  };
+  // Loop through each component -> we want to grab the individual component
+  // and it's index so we know what is changing and which one is changing
+  components.forEach((component, index) => {
+    // Grab the links, videos, and Progress Bars and store them in an array NOT a NodeList (what would happen if you use .querySelectorAll)
+    const links = Array.from(component.querySelectorAll<HTMLAnchorElement>(selectors.LINK));
+    const videos = component.querySelectorAll<HTMLVideoElement>("video");
+    const progressBars = Array.from(component.querySelectorAll<HTMLDivElement>(selectors.PROGRESS_BAR));
 
-  // autoPlay function
-  const autoPlayTabs = () => {
-    clearTimeout(timeout);
+    // Let's get the current index
+    let currentIndex = links.findIndex((link) => link.classList.contains(selectors.CURRENT_CLASS));
+    let requestId;
 
-    const activeVideo = videos[activeIndex];
-    let videoDuration: number = +activeVideo.attributes[1].value;
-    console.log(videoDuration);
+    videos.forEach((video) => {
+        video.removeAttribute('loop')
+        video.removeAttribute('autoplay')
+    })
 
-     if (tween) {
-        tween.progress(0);
-        tween.kill();
-     }
+    async function playNextVideo(index: number = currentIndex) {
+        // set playhead back to zero
+        videos.forEach((video) => {
+            video.currentTime - 0;
+            video.pause()
+        })
 
-    if (progressBars.length > 0) {
-      animateProgressBars(videoDuration );
+      // Wait 1 milli second to make sure videos are paused
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        currentIndex = index;
+        let currentVideo: HTMLVideoElement = videos[currentIndex % videos.length] as HTMLVideoElement;
+        console.log(currentVideo, currentIndex)
+        await currentVideo.play()
+        updateProgressBar(currentVideo, progressBars[currentIndex]);
+        
+        // On end
+        currentVideo.onended = () => {
+            currentIndex = (currentIndex + 1) % videos.length
+            console.log('fired', currentIndex)
+            simulateClick(links[currentIndex]);
+            playNextVideo(currentIndex)
+        }
     }
 
-    timeout = setTimeout(() => {
-      let nextIndex;
-      if (activeIndex >= tabsMenu.childElementCount - 1) {
-        nextIndex = 0;
-      } else {
-        nextIndex = activeIndex + 1;
+    function updateProgressBar(video: HTMLVideoElement, progressBar: HTMLDivElement) {
+        let progressDirection: string =
+        progressBar.getAttribute(selectors.PROGRESS_DIRECTION) || 'horizontal';
+
+      if (progressDirection !== 'horizontal' && progressDirection !== 'vertical') {
+        console.error('invalid progress direction');
+        return;
       }
-      const nextTab = tabsMenu.childNodes[nextIndex] as HTMLAnchorElement;
 
-      nextTab.click();
-    }, videoDuration * 1000);
-  };
-  autoPlayTabs();
+      if (requestId) {
+        cancelAnimationFrame(requestId);
+        resetProgressBars(progressBars);
+      }
 
-  // Options for the observer (which mutations to observe)
-  const config: MutationObserverInit = {
-    attributes: true,
-    attributeFilter: ["class"],
-    subtree: true,
-  };
+      let start: number;
+      function step(timestamp: number) {
+        if (!start) start = timestamp;
 
-  // Callback function to execute when mutations are observed
-  const callback = (mutationList, observer) => {
-    for (const mutation of mutationList) {
-      if (mutation.type === "attributes") {
-        const target: HTMLAnchorElement | HTMLDivElement = mutation.target;
-        if (target.classList.contains(ACTIVE_TAB)) {
-          activeIndex = parseInt(target.id.slice(-1), 10);
-          
-          // autoplay tabs
-          autoPlayTabs();
+        let progress = (timestamp - start) / (video.duration * 1000); // duration is in seconds, timestamp in milliseconds
+        progress = Math.min(progress, 1); // Cap progress at 1 (100%)
+
+        if (progressDirection === 'horizontal') {
+          progressBar.style.transform = `scaleX(${progress})`;
+        } else {
+          progressBar.style.transform = `scaleY(${progress})`;
+        }
+
+        if (progress < 1) {
+          requestId = requestAnimationFrame(step); // Save the request ID
         }
       }
+
+      requestId = requestAnimationFrame(step); // Save the request ID
     }
-  };
 
-  // Create an observer instance linked to the callback function
-  const observer = new MutationObserver(callback);
+    function resetProgressBars(progressBars: HTMLDivElement[]) {
+        progressBars.forEach((progressBar) => {
+            let progressDirection: string =
+              progressBar.getAttribute(selectors.PROGRESS_DIRECTION) || 'horizontal';
+    
+            if (progressDirection !== 'horizontal' && progressDirection !== 'vertical') {
+              console.error('invalid progress direction');
+              return;
+            }
+            if (progressDirection === 'horizontal') {
+              progressBar.style.transform = 'scaleX(0)';
+            } else {
+              progressBar.style.transform = 'scaleY(0)';
+            }
+          });
+    }
 
-  // Start observing the target node for configured mutations
-  observer.observe(tabsComponent, config);
-};
+    links.forEach((link, index) => {
+        link.addEventListener('click', () => playNextVideo(index))
+    })
 
-document.addEventListener("DOMContentLoaded", init);
+    playNextVideo();
+  });
+});
+
+// need to simulate click to trigger tab change
+// using click() causes scroll issues in Safari
+function simulateClick(element: HTMLAnchorElement) {
+  let clickEvent = new MouseEvent("click", {
+    view: window,
+    bubbles: true,
+    cancelable: false,
+  });
+  element.dispatchEvent(clickEvent);
+}

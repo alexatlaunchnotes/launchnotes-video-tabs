@@ -26,6 +26,8 @@
     "typescript": "^4.9.3"
   },
   "dependencies": {
-    "gsap": "^3.11.5"
+    "@finsweet/ts-utils": "^0.39.1",
+    "gsap": "^3.11.5",
+    "wistia-api": "^0.0.0"
   }
 }
