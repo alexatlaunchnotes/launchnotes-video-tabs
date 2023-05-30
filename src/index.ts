@@ -12,6 +12,7 @@ enum selectors {
   PANE = ".w-tab-pane",
   LINK = ".w-tab-link",
   CURRENT_CLASS = "w--current",
+  TAB_BODY = ".tab-body--pillars",
   PROGRESS_BAR = '[wb-autotabs="progress"]',
   PROGRESS_DIRECTION = "wb-autotabs-progress-direction",
 }
@@ -37,9 +38,21 @@ window.Webflow.push(() => {
     let currentIndex = links.findIndex((link) => link.classList.contains(selectors.CURRENT_CLASS));
     let requestId;
 
+    // Setup the sections
     videos.forEach((video) => {
         video.removeAttribute('loop')
         video.removeAttribute('autoplay')
+    })
+
+    links.forEach((link) => {
+        const bodyText: HTMLDivElement | null = link.querySelector(selectors.TAB_BODY);
+        if (!bodyText) return
+
+        if (!link.classList.contains('w--current')) {
+            bodyText.style.display = 'none';
+        } else {
+            bodyText.style.display = 'block';
+        }
     })
 
     async function playNextVideo(index: number = currentIndex) {
@@ -54,17 +67,32 @@ window.Webflow.push(() => {
 
         currentIndex = index;
         let currentVideo: HTMLVideoElement = videos[currentIndex % videos.length] as HTMLVideoElement;
-        console.log(currentVideo, currentIndex)
         await currentVideo.play()
+        hideTabBodyText(currentIndex)
         updateProgressBar(currentVideo, progressBars[currentIndex]);
         
         // On end
         currentVideo.onended = () => {
             currentIndex = (currentIndex + 1) % videos.length
-            console.log('fired', currentIndex)
             simulateClick(links[currentIndex]);
             playNextVideo(currentIndex)
         }
+    }
+
+    function hideTabBodyText(currentIndex: number) {
+        const tabs: NodeListOf<HTMLAnchorElement> = document.querySelectorAll<HTMLAnchorElement>('.w-tab-link')
+
+        tabs.forEach((tab: HTMLAnchorElement ) => {
+            const bodyText: HTMLDivElement | null = tab.querySelector(selectors.TAB_BODY);
+            if (!bodyText) return
+            console.log(currentIndex, tab)
+            if (!tab.classList.contains(selectors.CURRENT_CLASS)) {
+                console.log(bodyText)
+                bodyText.style.display = 'none';
+            } else {
+                bodyText.style.display = 'block'
+            }
+        })
     }
 
     function updateProgressBar(video: HTMLVideoElement, progressBar: HTMLDivElement) {
